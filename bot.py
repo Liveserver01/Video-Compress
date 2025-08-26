@@ -1,98 +1,97 @@
-import os
-import subprocess
-import threading
-from flask import Flask
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+import os import subprocess import tempfile from flask import Flask from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton from telegram.ext import ( Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes, )
 
-TOKEN = os.getenv("BOT_TOKEN")
+================= CONFIG =================
 
-# Flask app for Render
-app = Flask(__name__)
+BOT_TOKEN = os.getenv("BOT_TOKEN") PORT = int(os.environ.get("PORT", 5000))
 
-@app.route('/')
-def home():
-    return "Bot is running ✅"
+Flask app to keep service alive
 
-# Telegram bot functions
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Send me a video 🎥 and I will compress it using FFmpeg")
+app = Flask(name)
 
-async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    video = update.message.video
-    file = await context.bot.get_file(video.file_id)
-    file_path = f"downloads/{video.file_id}.mp4"
-    os.makedirs("downloads", exist_ok=True)
-    await file.download_to_drive(file_path)
+@app.route("/") def home(): return "✅ Telegram FFmpeg Bot is running!"
 
-    keyboard = [
-        [
-            InlineKeyboardButton("H.265 (HEVC)", callback_data=f"codec_h265|{file_path}"),
-            InlineKeyboardButton("H.264", callback_data=f"codec_h264|{file_path}")
-        ]
-    ]
-    await update.message.reply_text("Choose codec:", reply_markup=InlineKeyboardMarkup(keyboard))
+============== TELEGRAM BOT ==============
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+Store user settings
 
-    data = query.data.split("|")
-    action = data[0]
-    file_path = data[1]
+user_settings = {}
 
-    if action.startswith("codec_"):
-        codec = action.split("_")[1]
-        keyboard = [
-            [
-                InlineKeyboardButton("480p", callback_data=f"res_480|{codec}|{file_path}"),
-                InlineKeyboardButton("720p", callback_data=f"res_720|{codec}|{file_path}"),
-                InlineKeyboardButton("1080p", callback_data=f"res_1080|{codec}|{file_path}")
-            ]
-        ]
-        await query.edit_message_text("Choose resolution:", reply_markup=InlineKeyboardMarkup(keyboard))
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE): keyboard = [[InlineKeyboardButton("🎥 Compress Video", callback_data="compress")]] await update.message.reply_text( "👋 Namaste! Main aapka Video Compression Bot hu.\n" "Mujhe video bhejiye ya neeche button par click kijiye.", reply_markup=InlineKeyboardMarkup(keyboard), )
 
-    elif action.startswith("res_"):
-        res = action.split("_")[1]
-        codec = data[1]
-        file_path = data[2]
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE): query = update.callback_query await query.answer()
 
-        output_file = f"compressed_{os.path.basename(file_path)}"
+if query.data == "compress":
+    user_settings[query.from_user.id] = {
+        "codec": "libx265",
+        "resolution": "720p",
+        "preset": "medium",
+        "crf": 24,
+        "audio": "copy",
+        "subs": "copy",
+    }
+    await query.edit_message_text(
+        "⚙️ Default settings set ho gayi hain:\n"
+        "Codec: H.265 (HEVC)\n"
+        "Resolution: 720p\n"
+        "Preset: medium\n"
+        "CRF: 24\n"
+        "Audio: same as source\n"
+        "Subtitles: same as source\n\n"
+        "Ab mujhe apna video bhejiye 📩"
+    )
 
-        if codec == "h265":
-            vcodec = "libx265"
-            profile = "-profile:v main10 -level 4.0"
-        else:
-            vcodec = "libx264"
-            profile = "-profile:v high -level 4.0"
+async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE): user_id = update.message.from_user.id if user_id not in user_settings: await update.message.reply_text("⚠️ Pehle /start kijiye aur settings choose kijiye.") return
 
-        scale = ""
-        if res == "480":
-            scale = "-vf scale=-1:480"
-        elif res == "720":
-            scale = "-vf scale=-1:720"
-        elif res == "1080":
-            scale = "-vf scale=-1:1080"
+file = await context.bot.get_file(update.message.video.file_id)
+input_path = tempfile.mktemp(suffix=".mp4")
+output_path = tempfile.mktemp(suffix=".mp4")
+await file.download_to_drive(input_path)
 
-        cmd = f"ffmpeg -i {file_path} {scale} -c:v {vcodec} -preset medium {profile} -crf 24 -c:a copy {output_file}"
-        subprocess.run(cmd, shell=True)
+settings = user_settings[user_id]
+resolution_map = {"480p": "854x480", "720p": "1280x720", "1080p": "1920x1080"}
+resolution = resolution_map.get(settings["resolution"], "1280x720")
 
-        await query.edit_message_text("✅ Compression done! Uploading...")
+ffmpeg_cmd = [
+    "ffmpeg",
+    "-i", input_path,
+    "-c:v", settings["codec"],
+    "-preset", settings["preset"],
+    "-profile:v", "main10",
+    "-level:v", "4.0",
+    "-crf", str(settings["crf"]),
+    "-vf", f"scale={resolution}",
+    "-c:a", settings["audio"],
+    "-c:s", settings["subs"],
+    output_path,
+]
 
-        await context.bot.send_document(chat_id=update.effective_chat.id, document=open(output_file, "rb"))
+try:
+    await update.message.reply_text("⏳ Compressing video, please wait...")
+    subprocess.run(ffmpeg_cmd, check=True)
 
-        os.remove(file_path)
-        os.remove(output_file)
+    await update.message.reply_video(video=open(output_path, "rb"), caption="✅ Compression Done!")
+except Exception as e:
+    await update.message.reply_text(f"❌ Error during compression: {e}")
+finally:
+    for f in [input_path, output_path]:
+        try:
+            os.remove(f)
+        except:
+            pass
 
-# Run bot in a separate thread
+============== MAIN RUNNER ==============
+
+async def main(): application = Application.builder().token(BOT_TOKEN).build() application.add_handler(CommandHandler("start", start)) application.add_handler(CallbackQueryHandler(button)) application.add_handler(MessageHandler(filters.VIDEO, handle_video))
+
+await application.start()
+await application.updater.start_polling()
+await application.updater.idle()
+
+if name == "main": import threading, asyncio
+
 def run_bot():
-    application = Application.builder().token(TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.VIDEO, handle_video))
-    application.add_handler(CallbackQueryHandler(button_handler))
-    application.run_polling()
+    asyncio.run(main())
 
-if __name__ == "__main__":
-    threading.Thread(target=run_bot).start()
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+threading.Thread(target=run_bot).start()
+app.run(host="0.0.0.0", port=PORT)
+
