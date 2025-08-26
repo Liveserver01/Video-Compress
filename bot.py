@@ -4,9 +4,9 @@ import tempfile
 from flask import Flask 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton 
 from telegram.ext import ( 
-    Application,
+    Application, 
     CommandHandler, 
-    MessageHandler,
+    MessageHandler, 
     CallbackQueryHandler, 
     filters, 
     ContextTypes, 
@@ -21,7 +21,9 @@ Flask app to keep service alive
 
 app = Flask(name)
 
-@app.route("/") def home(): return "✅ Telegram FFmpeg Bot is running!"
+@app.route("/") 
+def home(): 
+    return "✅ Telegram FFmpeg Bot is running!"
 
 ============== TELEGRAM BOT ==============
 
@@ -29,9 +31,17 @@ Store user settings
 
 user_settings = {}
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE): keyboard = [[InlineKeyboardButton("🎥 Compress Video", callback_data="compress")]] await update.message.reply_text( "👋 Namaste! Main aapka Video Compression Bot hu.\n" "Mujhe video bhejiye ya neeche button par click kijiye.", reply_markup=InlineKeyboardMarkup(keyboard), )
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE): 
+    keyboard = [[InlineKeyboardButton("🎥 Compress Video", callback_data="compress")]] 
+    await update.message.reply_text( 
+        "👋 Namaste! Main aapka Video Compression Bot hu.\n" 
+        "Mujhe video bhejiye ya neeche button par click kijiye.", 
+        reply_markup=InlineKeyboardMarkup(keyboard), 
+    )
 
-async def button(update: Update, context: ContextTypes.DEFAULT_TYPE): query = update.callback_query await query.answer()
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE): 
+    query = update.callback_query 
+    await query.answer()
 
 if query.data == "compress":
     user_settings[query.from_user.id] = {
@@ -53,7 +63,11 @@ if query.data == "compress":
         "Ab mujhe apna video bhejiye 📩"
     )
 
-async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE): user_id = update.message.from_user.id if user_id not in user_settings: await update.message.reply_text("⚠️ Pehle /start kijiye aur settings choose kijiye.") return
+async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE): 
+    user_id = update.message.from_user.id 
+    if user_id not in user_settings: 
+        await update.message.reply_text("⚠️ Pehle /start kijiye aur settings choose kijiye.") 
+        return
 
 file = await context.bot.get_file(update.message.video.file_id)
 input_path = tempfile.mktemp(suffix=".mp4")
@@ -94,13 +108,18 @@ finally:
 
 ============== MAIN RUNNER ==============
 
-async def main(): application = Application.builder().token(BOT_TOKEN).build() application.add_handler(CommandHandler("start", start)) application.add_handler(CallbackQueryHandler(button)) application.add_handler(MessageHandler(filters.VIDEO, handle_video))
+async def main(): 
+    application = Application.builder().token(BOT_TOKEN).build() 
+    application.add_handler(CommandHandler("start", start)) 
+    application.add_handler(CallbackQueryHandler(button)) 
+    application.add_handler(MessageHandler(filters.VIDEO, handle_video))
 
 await application.start()
 await application.updater.start_polling()
 await application.updater.idle()
 
-if name == "main": import threading, asyncio
+if name == "main": 
+    import threading, asyncio
 
 def run_bot():
     asyncio.run(main())
