@@ -12,7 +12,7 @@ from telegram.ext import (
     ContextTypes, 
 )
 
-//================= CONFIG =================
+<!--================= CONFIG =================-->
 
 BOT_TOKEN = os.getenv("BOT_TOKEN") 
 PORT = int(os.environ.get("PORT", 5000))
@@ -25,9 +25,9 @@ app = Flask(name)
 def home(): 
     return "✅ Telegram FFmpeg Bot is running!"
 
-//============== TELEGRAM BOT ==============
+<!-- ============== TELEGRAM BOT ============== -->
 
-//Store user settings
+<!-- Store user settings -->
 
 user_settings = {}
 
@@ -106,7 +106,7 @@ finally:
         except:
             pass
 
-//============== MAIN RUNNER ==============
+<!-- ============== MAIN RUNNER ============== -->
 
 async def main(): 
     application = Application.builder().token(BOT_TOKEN).build() 
