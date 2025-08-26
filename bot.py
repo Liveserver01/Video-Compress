@@ -1,4 +1,16 @@
-import os import subprocess import tempfile from flask import Flask from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton from telegram.ext import ( Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes, )
+import os 
+import subprocess 
+import tempfile 
+from flask import Flask 
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton 
+from telegram.ext import ( 
+    Application,
+    CommandHandler, 
+    MessageHandler,
+    CallbackQueryHandler, 
+    filters, 
+    ContextTypes, 
+)
 
 ================= CONFIG =================
 
