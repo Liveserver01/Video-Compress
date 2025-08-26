@@ -14,7 +14,8 @@ from telegram.ext import (
 
 ================= CONFIG =================
 
-BOT_TOKEN = os.getenv("BOT_TOKEN") PORT = int(os.environ.get("PORT", 5000))
+BOT_TOKEN = os.getenv("BOT_TOKEN") 
+PORT = int(os.environ.get("PORT", 5000))
 
 Flask app to keep service alive
 
