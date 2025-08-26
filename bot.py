@@ -1,6 +1,7 @@
 import os
 import tempfile
 import subprocess
+import threading
 from flask import Flask, request
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
@@ -17,15 +18,14 @@ BOT_TOKEN = os.getenv("BOT_TOKEN") or "YOUR_BOT_TOKEN"
 RENDER_URL = os.getenv("RENDER_URL") or "https://video-compress-jobi.onrender.com"
 PORT = int(os.environ.get("PORT", 5000))
 
-# Flask app
 app = Flask(__name__)
-
-# ================== TELEGRAM BOT ==================
 user_settings = {}
 
+# Telegram Application
 application = Application.builder().token(BOT_TOKEN).build()
 
 
+# ================== HANDLERS ==================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("🎥 Compress Video", callback_data="compress")]]
     await update.message.reply_text(
@@ -49,13 +49,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "subs": "copy",
         }
         await query.edit_message_text(
-            "⚙️ Default settings set ho gayi hain:\n"
-            "Codec: H.265 (HEVC)\n"
-            "Resolution: 720p\n"
-            "Preset: medium\n"
-            "CRF: 24\n"
-            "Audio: same as source\n"
-            "Subtitles: same as source\n\n"
+            "⚙️ Default settings set ho gayi hain.\n"
             "Ab mujhe apna video bhejiye 📩"
         )
 
@@ -76,12 +70,9 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     resolution = resolution_map.get(settings["resolution"], "1280x720")
 
     ffmpeg_cmd = [
-        "ffmpeg",
-        "-i", input_path,
+        "ffmpeg", "-i", input_path,
         "-c:v", settings["codec"],
         "-preset", settings["preset"],
-        "-profile:v", "main10",
-        "-level:v", "4.0",
         "-crf", str(settings["crf"]),
         "-vf", f"scale={resolution}",
         "-c:a", settings["audio"],
@@ -94,7 +85,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         subprocess.run(ffmpeg_cmd, check=True)
         await update.message.reply_video(video=open(output_path, "rb"), caption="✅ Compression Done!")
     except Exception as e:
-        await update.message.reply_text(f"❌ Error during compression: {e}")
+        await update.message.reply_text(f"❌ Error: {e}")
     finally:
         for f in [input_path, output_path]:
             try:
@@ -103,7 +94,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
 
-# ================== HANDLERS ==================
+# Register handlers
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CallbackQueryHandler(button))
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
@@ -112,7 +103,7 @@ application.add_handler(MessageHandler(filters.VIDEO, handle_video))
 # ================== FLASK ROUTES ==================
 @app.route("/")
 def home():
-    return "✅ Telegram FFmpeg Bot is running!"
+    return "✅ Bot is running!"
 
 
 @app.route(f"/webhook/{BOT_TOKEN}", methods=["POST"])
@@ -122,14 +113,24 @@ def webhook():
     return "ok", 200
 
 
-# ================== MAIN ==================
+# ================== RUN ==================
+def run_telegram():
+    application.run_polling()   # background me telegram events run hote rahenge
+
+
 if __name__ == "__main__":
     import asyncio
 
-    async def init():
+    # Webhook set karte hi
+    async def set_webhook():
         await application.bot.delete_webhook()
         await application.bot.set_webhook(f"{RENDER_URL}/webhook/{BOT_TOKEN}")
         print("✅ Webhook set:", f"{RENDER_URL}/webhook/{BOT_TOKEN}")
 
-    asyncio.run(init())
+    asyncio.get_event_loop().run_until_complete(set_webhook())
+
+    # Telegram ko background me run karo
+    threading.Thread(target=run_telegram, daemon=True).start()
+
+    # Flask ko run karo
     app.run(host="0.0.0.0", port=PORT)
