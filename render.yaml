@@ -1,8 +1,12 @@
 services:
-  - type: worker
+  - type: web
     name: telegram-video-compress-bot
     env: python
-    buildCommand: |
-      apt-get update && apt-get install -y ffmpeg
-      pip install -r requirements.txt
+    plan: free
+    buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false   # isko Render ke Dashboard me manually set karo
+      - key: RENDER_URL
+        value: https://video-compress-jobi.onrender.com
