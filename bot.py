@@ -15,14 +15,14 @@ from telegram.ext import (
 # ================= CONFIG =================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 PORT = int(os.environ.get("PORT", 5000))
-RENDER_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}"
+RENDER_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}"   # Render ka external URL
 
 # Flask app
 app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "✅ Bot is running on Render!"
+    return "✅ Telegram Video Compression Bot is running on Render!"
 
 
 # ============== TELEGRAM BOT ==============
@@ -48,7 +48,16 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "audio": "copy",
             "subs": "copy",
         }
-        await query.edit_message_text("⚙️ Default compression settings set! Ab mujhe apna video bhejiye 📩")
+        await query.edit_message_text(
+            "⚙️ Default settings set ho gayi hain:\n"
+            "Codec: H.265 (HEVC)\n"
+            "Resolution: 720p\n"
+            "Preset: medium\n"
+            "CRF: 24\n"
+            "Audio: same as source\n"
+            "Subtitles: same as source\n\n"
+            "Ab mujhe apna video bhejiye 📩"
+        )
 
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -62,7 +71,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await file.download_to_drive(input_path)
 
     settings = user_settings[user_id]
-    resolution = "1280x720"  # default 720p
+    resolution = "1280x720"  # Default resolution
 
     ffmpeg_cmd = [
         "ffmpeg", "-i", input_path,
@@ -74,15 +83,17 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     try:
-        await update.message.reply_text("⏳ Compressing video...")
+        await update.message.reply_text("⏳ Compressing video, please wait...")
         subprocess.run(ffmpeg_cmd, check=True)
-        await update.message.reply_video(video=open(output_path, "rb"), caption="✅ Done!")
+        await update.message.reply_video(video=open(output_path, "rb"), caption="✅ Compression Done!")
     except Exception as e:
         await update.message.reply_text(f"❌ Error: {e}")
     finally:
         for f in [input_path, output_path]:
-            try: os.remove(f)
-            except: pass
+            try:
+                os.remove(f)
+            except:
+                pass
 
 
 # ============== TELEGRAM APPLICATION ==============
@@ -91,10 +102,15 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(CallbackQueryHandler(button))
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
 
+# Webhook endpoint (IMPORTANT: includes BOT_TOKEN in route)
 @app.route(f"/webhook/{BOT_TOKEN}", methods=["POST"])
 def webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    application.update_queue.put_nowait(update)
+    try:
+        data = request.get_json(force=True)
+        update = Update.de_json(data, application.bot)
+        application.update_queue.put_nowait(update)
+    except Exception as e:
+        print("❌ Webhook error:", e)
     return "ok"
 
 
@@ -102,9 +118,12 @@ if __name__ == "__main__":
     import asyncio
 
     async def init():
-        # Purana webhook hatao aur naya lagao
+        # Reset webhook before setting new one
         await application.bot.delete_webhook()
-        await application.bot.set_webhook(f"{RENDER_URL}/webhook/{BOT_TOKEN}")
+        await application.bot.set_webhook(
+            f"{RENDER_URL}/webhook/{BOT_TOKEN}",
+            allowed_updates=["message", "callback_query"]
+        )
         print("✅ Webhook set:", f"{RENDER_URL}/webhook/{BOT_TOKEN}")
 
     asyncio.get_event_loop().run_until_complete(init())
