@@ -1,9 +1,7 @@
 import os
 import subprocess
 import tempfile
-import threading
-import asyncio
-from flask import Flask
+from flask import Flask, request
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     Application,
@@ -17,20 +15,17 @@ from telegram.ext import (
 # ================= CONFIG =================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 PORT = int(os.environ.get("PORT", 5000))
+RENDER_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}"   # Render ka external URL
 
-# Flask app to keep service alive
+# Flask app
 app = Flask(__name__)
 
 @app.route("/")
 def home():
     return "✅ Telegram FFmpeg Bot is running!"
 
-
 # ============== TELEGRAM BOT ==============
-
-# Store user settings
 user_settings = {}
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("🎥 Compress Video", callback_data="compress")]]
@@ -39,7 +34,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Mujhe video bhejiye ya neeche button par click kijiye.",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
-
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -64,7 +58,6 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Subtitles: same as source\n\n"
             "Ab mujhe apna video bhejiye 📩"
         )
-
 
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -109,24 +102,23 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
 
-
 # ============== MAIN RUNNER ==============
+application = Application.builder().token(BOT_TOKEN).build()
+application.add_handler(CommandHandler("start", start))
+application.add_handler(CallbackQueryHandler(button))
+application.add_handler(MessageHandler(filters.VIDEO, handle_video))
 
-async def main():
-    application = Application.builder().token(BOT_TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(button))
-    application.add_handler(MessageHandler(filters.VIDEO, handle_video))
-
-    await application.start()
-    await application.updater.start_polling()
-    await application.updater.idle()
-
-
-def run_bot():
-    asyncio.run(main())
-
+@app.route(f"/webhook/{BOT_TOKEN}", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.update_queue.put_nowait(update)
+    return "ok"
 
 if __name__ == "__main__":
-    threading.Thread(target=run_bot).start()
+    # Webhook set karna zaroori hai
+    import asyncio
+    async def set_webhook():
+        await application.bot.set_webhook(f"{RENDER_URL}/webhook/{BOT_TOKEN}")
+
+    asyncio.get_event_loop().run_until_complete(set_webhook())
     app.run(host="0.0.0.0", port=PORT)
