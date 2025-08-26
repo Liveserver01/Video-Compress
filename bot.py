@@ -31,6 +31,7 @@ app = Flask(__name__)
 # ==============================
 application = Application.builder().token(BOT_TOKEN).build()
 
+
 # ==============================
 # Handlers
 # ==============================
@@ -58,10 +59,10 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await file.download_to_drive(input_path)
         await update.message.reply_text("📥 Video download ho gaya! Ab compress kar raha hoon...")
 
-        # FFmpeg compression command
+        # FFmpeg compression
         cmd = [
             "ffmpeg", "-i", input_path,
-            "-vcodec", "libx264", "-crf", "28",  # CRF 28 = compressed
+            "-vcodec", "libx264", "-crf", "28",
             output_path
         ]
         subprocess.run(cmd, check=True)
@@ -77,10 +78,11 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Video process error: {e}")
         await update.message.reply_text("❌ Video process karte waqt error aaya!")
 
-# Commands & Handlers
+# Register handlers
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("help", help_command))
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
+
 
 # ==============================
 # Flask webhook route
@@ -89,15 +91,26 @@ application.add_handler(MessageHandler(filters.VIDEO, handle_video))
 def webhook():
     try:
         update = Update.de_json(request.get_json(force=True), application.bot)
+
         import asyncio
-        asyncio.run(application.process_update(update))
+        loop = asyncio.get_event_loop()
+
+        # ✅ Make sure app is initialized & started
+        if not application.running:
+            loop.run_until_complete(application.initialize())
+            loop.run_until_complete(application.start())
+
+        loop.run_until_complete(application.process_update(update))
+
     except Exception as e:
         logger.error(f"❌ Webhook error: {e}")
     return "ok"
 
+
 @app.route("/")
 def home():
     return "🤖 Bot is running!"
+
 
 # ==============================
 # Main
@@ -106,9 +119,7 @@ if __name__ == "__main__":
     import asyncio
 
     async def set_webhook():
-        # Purana webhook delete karo
         await application.bot.delete_webhook()
-        # Naya webhook set karo
         await application.bot.set_webhook(
             url=f"{RENDER_URL}/webhook/{BOT_TOKEN}",
             allowed_updates=["message", "callback_query"]
@@ -117,5 +128,5 @@ if __name__ == "__main__":
 
     asyncio.run(set_webhook())
 
-    # Flask server start
+    # Flask start
     app.run(host="0.0.0.0", port=PORT)
