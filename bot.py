@@ -1,10 +1,9 @@
 import os
 import logging
-import asyncio
 import subprocess
 from flask import Flask, request
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # ==============================
 # Config
@@ -36,87 +35,62 @@ application = Application.builder().token(BOT_TOKEN).build()
 # Handlers
 # ==============================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("📹 Video Compress", callback_data="compress")],
-        [InlineKeyboardButton("ℹ️ Help", callback_data="help")],
-        [InlineKeyboardButton("⭐ About", callback_data="about")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
     await update.message.reply_text(
-        "👋 Namaste! Main Video Compress Bot hoon.\n\n"
-        "🎥 Mujhe koi video bhejo, main usse compress karke dunga.\n"
-        "👇 Niche se ek option select karo:",
-        reply_markup=reply_markup
+        "👋 Namaste! Main video compress bot hoon.\n\n"
+        "🎥 Mujhe koi video bhejo, main usse compress karke dunga."
     )
 
-async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    if query.data == "compress":
-        await query.edit_message_text("📩 Mujhe apna video bhejo, main usse compress karunga.")
-    elif query.data == "help":
-        await query.edit_message_text("❓ Help:\nBas mujhe video bhejo aur main usse compress karke dunga.")
-    elif query.data == "about":
-        await query.edit_message_text("ℹ️ About:\nYe bot Flask + python-telegram-bot + FFmpeg se banaya gaya hai.")
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "ℹ️ Commands:\n"
+        "/start - Bot shuru karo\n"
+        "/help - Madad dekho\n\n"
+        "Aur mujhe koi video bhejo, main usse compress kar dunga!"
+    )
 
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = await update.message.reply_text("📥 Video download ho raha hai...")
-
-    # Step 1: video download
-    file = await context.bot.get_file(update.message.video.file_id)
-    input_path = f"input_{update.message.video.file_id}.mp4"
-    output_path = f"compressed_{update.message.video.file_id}.mp4"
-    await file.download_to_drive(input_path)
-
-    await msg.edit_text("⚙️ Video compress ho raha hai...")
-
-    # Step 2: compress using FFmpeg
     try:
-        command = [
+        file = await update.message.video.get_file()
+        input_path = "input.mp4"
+        output_path = "output.mp4"
+
+        # File download
+        await file.download_to_drive(input_path)
+        await update.message.reply_text("📥 Video download ho gaya! Ab compress kar raha hoon...")
+
+        # FFmpeg compression command
+        cmd = [
             "ffmpeg", "-i", input_path,
-            "-vcodec", "libx264", "-crf", "28",  # CRF 28 = decent compression
-            "-preset", "fast",
-            "-acodec", "aac",
+            "-vcodec", "libx264", "-crf", "28",  # CRF 28 = compressed
             output_path
         ]
-        subprocess.run(command, check=True)
+        subprocess.run(cmd, check=True)
 
-        await msg.edit_text("📤 Compressed video bheja ja raha hai...")
+        # Compressed video bhejna
+        await update.message.reply_video(video=open(output_path, "rb"), caption="✅ Yeh lo compressed video!")
 
-        # Step 3: send compressed video
-        await update.message.reply_video(video=open(output_path, "rb"))
+        # Clean up
+        os.remove(input_path)
+        os.remove(output_path)
 
     except Exception as e:
-        await msg.edit_text(f"❌ Compression failed: {e}")
-        logger.error(f"FFmpeg Error: {e}")
-    finally:
-        # Clean up
-        if os.path.exists(input_path):
-            os.remove(input_path)
-        if os.path.exists(output_path):
-            os.remove(output_path)
+        logger.error(f"Video process error: {e}")
+        await update.message.reply_text("❌ Video process karte waqt error aaya!")
 
-async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("❗ Sirf video bhejo ya /start command use karo.")
-
-# ==============================
-# Handlers Registration
-# ==============================
+# Commands & Handlers
 application.add_handler(CommandHandler("start", start))
-application.add_handler(CallbackQueryHandler(handle_buttons))
+application.add_handler(CommandHandler("help", help_command))
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
 # ==============================
 # Flask webhook route
 # ==============================
 @app.route(f"/webhook/{BOT_TOKEN}", methods=["POST"])
-async def webhook():
+def webhook():
     try:
         update = Update.de_json(request.get_json(force=True), application.bot)
-        await application.process_update(update)
+        import asyncio
+        asyncio.run(application.process_update(update))
     except Exception as e:
         logger.error(f"❌ Webhook error: {e}")
     return "ok"
@@ -129,9 +103,12 @@ def home():
 # Main
 # ==============================
 if __name__ == "__main__":
+    import asyncio
 
     async def set_webhook():
+        # Purana webhook delete karo
         await application.bot.delete_webhook()
+        # Naya webhook set karo
         await application.bot.set_webhook(
             url=f"{RENDER_URL}/webhook/{BOT_TOKEN}",
             allowed_updates=["message", "callback_query"]
@@ -139,4 +116,6 @@ if __name__ == "__main__":
         print("✅ Webhook set:", f"{RENDER_URL}/webhook/{BOT_TOKEN}")
 
     asyncio.run(set_webhook())
+
+    # Flask server start
     app.run(host="0.0.0.0", port=PORT)
