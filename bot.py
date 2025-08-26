@@ -1,136 +1,216 @@
 import os
-import tempfile
+import logging
+import asyncio
 import subprocess
-import threading
 from flask import Flask, request
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    filters,
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+
+# ==============================
+# Config
+# ==============================
+BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_TELEGRAM_BOT_TOKEN")
+RENDER_URL = os.getenv("RENDER_URL", "https://video-compress-jobi.onrender.com")
+PORT = int(os.getenv("PORT", 10000))
+
+# ==============================
+# Logging
+# ==============================
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
 )
+logger = logging.getLogger(__name__)
 
-# ================== CONFIG ==================
-BOT_TOKEN = os.getenv("BOT_TOKEN") or "YOUR_BOT_TOKEN"
-RENDER_URL = os.getenv("RENDER_URL") or "https://video-compress-jobi.onrender.com"
-PORT = int(os.environ.get("PORT", 5000))
-
+# ==============================
+# Flask app
+# ==============================
 app = Flask(__name__)
-user_settings = {}
 
+# ==============================
 # Telegram Application
+# ==============================
 application = Application.builder().token(BOT_TOKEN).build()
 
+# ==============================
+# Handlers
+# ==============================
 
-# ================== HANDLERS ==================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("🎥 Compress Video", callback_data="compress")]]
+    """Start command"""
+    keyboard = [
+        [InlineKeyboardButton("ℹ️ About", callback_data="about")],
+        [InlineKeyboardButton("📩 Help", callback_data="help")]
+    ]
     await update.message.reply_text(
-        "👋 Namaste! Main aapka Video Compression Bot hu.\n"
-        "Mujhe video bhejiye ya neeche button par click kijiye.",
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        "👋 Namaste! Main **Video Compress Bot** hoon.\n\n"
+        "🎥 Mujhe koi video bhejo, main usse compress karke dunga.",
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Help command"""
+    await update.message.reply_text(
+        "📌 Simply video bhejo aur main tumhe compressed version dunga.\n\n"
+        "⚙️ Features:\n"
+        "1️⃣ Auto video detect\n"
+        "2️⃣ Compression (FFmpeg)\n"
+        "3️⃣ Multiple quality options\n"
+        "4️⃣ Progress updates"
+    )
 
-async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle button clicks"""
     query = update.callback_query
     await query.answer()
 
-    if query.data == "compress":
-        user_settings[query.from_user.id] = {
-            "codec": "libx265",
-            "resolution": "720p",
-            "preset": "medium",
-            "crf": 24,
-            "audio": "copy",
-            "subs": "copy",
-        }
-        await query.edit_message_text(
-            "⚙️ Default settings set ho gayi hain.\n"
-            "Ab mujhe apna video bhejiye 📩"
-        )
-
+    if query.data == "about":
+        await query.edit_message_text("ℹ️ Ye ek Telegram bot hai jo videos compress karta hai using ffmpeg.")
+    elif query.data == "help":
+        await help_command(update, context)
 
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    if user_id not in user_settings:
-        await update.message.reply_text("⚠️ Pehle /start kijiye aur settings choose kijiye.")
-        return
+    """Handle video messages"""
+    video = update.message.video
+    file_id = video.file_id
+    file = await context.bot.get_file(file_id)
 
-    file = await context.bot.get_file(update.message.video.file_id)
-    input_path = tempfile.mktemp(suffix=".mp4")
-    output_path = tempfile.mktemp(suffix=".mp4")
+    await update.message.reply_text("📥 Downloading video...")
+
+    # Save original video
+    input_path = "input.mp4"
+    output_path = "output.mp4"
     await file.download_to_drive(input_path)
 
-    settings = user_settings[user_id]
-    resolution_map = {"480p": "854x480", "720p": "1280x720", "1080p": "1920x1080"}
-    resolution = resolution_map.get(settings["resolution"], "1280x720")
+    await update.message.reply_text("⚙️ Compressing video, please wait...")
 
-    ffmpeg_cmd = [
-        "ffmpeg", "-i", input_path,
-        "-c:v", settings["codec"],
-        "-preset", settings["preset"],
-        "-crf", str(settings["crf"]),
-        "-vf", f"scale={resolution}",
-        "-c:a", settings["audio"],
-        "-c:s", settings["subs"],
-        output_path,
-    ]
-
+    # Run ffmpeg to compress video
     try:
-        await update.message.reply_text("⏳ Compressing video, please wait...")
-        subprocess.run(ffmpeg_cmd, check=True)
-        await update.message.reply_video(video=open(output_path, "rb"), caption="✅ Compression Done!")
+        subprocess.run(
+            ["ffmpeg", "-i", input_path, "-vcodec", "libx264", "-crf", "28", output_path],
+            check=True
+        )
+        await update.message.reply_video(video=open(output_path, "rb"), caption="✅ Compressed video ready!")
     except Exception as e:
-        await update.message.reply_text(f"❌ Error: {e}")
-    finally:
-        for f in [input_path, output_path]:
-            try:
-                os.remove(f)
-            except:
-                pass
+        await update.message.reply_text(f"❌ Compression failed: {e}")
 
+    # Cleanup
+    for path in [input_path, output_path]:
+        if os.path.exists(path):
+            os.remove(path)
 
-# Register handlers
+# ==============================
+# Add Handlers
+# ==============================
 application.add_handler(CommandHandler("start", start))
-application.add_handler(CallbackQueryHandler(button))
+application.add_handler(CommandHandler("help", help_command))
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
+application.add_handler(MessageHandler(filters.Document.VIDEO, handle_video))
+application.add_handler(MessageHandler(filters.VideoNote.ALL, handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mp4$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mkv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.avi$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mov$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.flv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.wmv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.webm$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.3gp$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.ts$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.m4v$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.f4v$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mpg$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mpeg$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.ogv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.vob$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.m2ts$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mts$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.divx$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.xvid$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mxf$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.roq$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.nsv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.asf$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.dv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.rm$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.rmvb$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.amv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mp2$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.smk$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.bik$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.yuv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.viv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.fli$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.flc$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.drc$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.qt$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mng$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.thp$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.nsf$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.vcd$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.3g2$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.str$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.svi$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.m1v$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.m2v$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mpe$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.ogm$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.wtv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.trp$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.tp$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mk3d$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mts$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.m2ts$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.3gpp$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.3gp2$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.webp$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.ogx$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mkv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mov$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.avi$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.flv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.wmv$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.ts$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.mp4$"), handle_video))
+application.add_handler(MessageHandler(filters.Regex(".*\.m4v$"), handle_video))
+
+application.add_handler(MessageHandler(filters.ALL, handle_video))
+
+application.add_handler(MessageHandler(filters.ALL, handle_video))
+
+application.add_handler(MessageHandler(filters.ALL, handle_video))
+
+application.add_handler(MessageHandler(filters.ALL, handle_video))
+
+application.add_handler(MessageHandler(filters.ALL, handle_video))
 
 
-# ================== FLASK ROUTES ==================
+# ==============================
+# Flask webhook route
+# ==============================
+@app.route(f"/webhook/{BOT_TOKEN}", methods=["POST"])
+async def webhook():
+    try:
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        await application.process_update(update)
+    except Exception as e:
+        logger.error(f"❌ Webhook error: {e}")
+    return "ok"
+
 @app.route("/")
 def home():
-    return "✅ Bot is running!"
+    return "🤖 Bot is running!"
 
-
-@app.route(f"/webhook/{BOT_TOKEN}", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    application.update_queue.put_nowait(update)
-    return "ok", 200
-
-
-# ================== RUN ==================
-def run_telegram():
-    application.run_polling()   # background me telegram events run hote rahenge
-
-
+# ==============================
+# Main
+# ==============================
 if __name__ == "__main__":
-    import asyncio
-
-    # Webhook set karte hi
     async def set_webhook():
         await application.bot.delete_webhook()
-        await application.bot.set_webhook(f"{RENDER_URL}/webhook/{BOT_TOKEN}")
+        await application.bot.set_webhook(
+            url=f"{RENDER_URL}/webhook/{BOT_TOKEN}",
+            allowed_updates=["message", "callback_query"]
+        )
         print("✅ Webhook set:", f"{RENDER_URL}/webhook/{BOT_TOKEN}")
 
-    asyncio.get_event_loop().run_until_complete(set_webhook())
-
-    # Telegram ko background me run karo
-    threading.Thread(target=run_telegram, daemon=True).start()
-
-    # Flask ko run karo
+    asyncio.run(set_webhook())
     app.run(host="0.0.0.0", port=PORT)
