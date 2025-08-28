@@ -1,4 +1,5 @@
 python-telegram-bot==20.3
 ffmpeg-python
-python-dotenv
-flesk 
+Flask==2.3.3
+python-dotenv==1.0.0
+gunicorn==21.2.0
