@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
 from dotenv import load_dotenv
+from flask import Flask, request
 from telegram import (
     Update,
     InlineKeyboardMarkup,
@@ -37,6 +38,11 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not BOT_TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN missing. Set it in environment variables or .env file.")
+
+PORT = int(os.environ.get("PORT", 5000))
+RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL")
+if not RENDER_EXTERNAL_URL:
+    raise RuntimeError("RENDER_EXTERNAL_URL missing. Add it in Render dashboard.")
 
 MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "1"))
 job_semaphore = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
@@ -245,35 +251,32 @@ async def handle_compress(chat_id: int, file_id: str, orig_name: str, context: C
                 caption=f"Codec: {s.codec} | Res: {s.resolution} | CRF: {s.crf}"
             )
 
-# --- तुम्हारा बाकी का पूरा code जैसा है वैसा ही रहने दो ---
-# (EncodeSettings, helpers, handlers वगैरह मत छेड़ो)
 
-# ================= Build App =================
-def build_app() -> Application:
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("settings", settings_cmd))
-    app.add_handler(CallbackQueryHandler(on_settings_callback, pattern="^(toggle_|cycle_|reset_|close_)"))
-    app.add_handler(CallbackQueryHandler(on_confirm_callback, pattern="^(do_compress|open_settings|cancel_job)$"))
-    app.add_handler(MessageHandler(filters.VIDEO | filters.Document.MimeType("video/"), on_video))
-    return app
+# =================== Flask + Webhook ===================
+flask_app = Flask(__name__)
+application = ApplicationBuilder().token(BOT_TOKEN).build()
+
+application.add_handler(CommandHandler("start", start))
+application.add_handler(CommandHandler("settings", settings_cmd))
+application.add_handler(CallbackQueryHandler(on_settings_callback, pattern="^(toggle_|cycle_|reset_|close_)"))
+application.add_handler(CallbackQueryHandler(on_confirm_callback, pattern="^(do_compress|open_settings|cancel_job)$"))
+application.add_handler(MessageHandler(filters.VIDEO | filters.Document.MimeType("video/"), on_video))
+
+
+@flask_app.post(f"/{BOT_TOKEN}")
+async def webhook():
+    data = request.get_json(force=True)
+    update = Update.de_json(data, application.bot)
+    await application.process_update(update)
+    return "ok"
+
+
+async def run() -> None:
+    # webhook reset
+    await application.bot.delete_webhook(drop_pending_updates=True)
+    await application.bot.set_webhook(url=f"{RENDER_EXTERNAL_URL}/{BOT_TOKEN}")
+    flask_app.run(host="0.0.0.0", port=PORT)
 
 
 if __name__ == "__main__":
-    app = build_app()
-
-    PORT = int(os.environ.get("PORT", 8443))
-    RENDER_URL = os.environ.get("RENDER_SERVICE_URL")  # Render dashboard में env var डालो: myapp.onrender.com
-
-    # पुराना webhook साफ़ करो
-    app.bot.delete_webhook(drop_pending_updates=True)
-
-    # नया webhook सेट करो
-    app.bot.set_webhook(url=f"https://{RENDER_URL}/{BOT_TOKEN}")
-
-    # webhook server run करो
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        webhook_path=f"/{BOT_TOKEN}",
-    )
+    asyncio.run(run())
