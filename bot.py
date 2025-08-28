@@ -264,10 +264,10 @@ application.add_handler(MessageHandler(filters.VIDEO | filters.Document.MimeType
 
 
 @flask_app.post(f"/{BOT_TOKEN}")
-async def webhook():
+def webhook():
     data = request.get_json(force=True)
     update = Update.de_json(data, application.bot)
-    await application.process_update(update)
+    asyncio.run(application.process_update(update))
     return "ok"
 
 
@@ -275,8 +275,16 @@ async def run() -> None:
     # webhook reset
     await application.bot.delete_webhook(drop_pending_updates=True)
     await application.bot.set_webhook(url=f"{RENDER_EXTERNAL_URL}/{BOT_TOKEN}")
-    flask_app.run(host="0.0.0.0", port=PORT)
 
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    import threading
+
+    async def init_bot():
+        await application.bot.delete_webhook(drop_pending_updates=True)
+        await application.bot.set_webhook(url=f"{RENDER_EXTERNAL_URL}/{BOT_TOKEN}")
+
+    asyncio.run(init_bot())
+
+    # Flask ko alag se chalao
+    flask_app.run(host="0.0.0.0", port=PORT)
