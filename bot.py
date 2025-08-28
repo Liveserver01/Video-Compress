@@ -1,78 +1,70 @@
 import os
+import logging
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram.ext import CallbackQueryHandler
+from telegram.ext._utils.types import JSONDict
+
+# Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-APP_URL = os.getenv("RENDER_EXTERNAL_URL")  # e.g. https://video-compress-jobi.onrender.com
+if not TOKEN:
+    raise ValueError("BOT_TOKEN not found in environment variables")
 
-# Flask App
+WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL")  # example: https://video-compress-jobi.onrender.com/webhook
+
 app = Flask(__name__)
-
-# Telegram Application
 application = Application.builder().token(TOKEN).build()
 
-
-# Start Command
-async def start(update: Update, context):
+# ---------- Bot Handlers ----------
+async def start(update: Update, context: CallbackContext):
     keyboard = [
-        [InlineKeyboardButton("📤 Video भेजें", callback_data="send_video")],
+        [InlineKeyboardButton("🎥 Send a Video", callback_data="send_video")],
         [InlineKeyboardButton("ℹ️ Help", callback_data="help")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("👋 नमस्ते! Video Compression Bot में आपका स्वागत है.\n\n👉 कोई भी video भेजें.", reply_markup=reply_markup)
+    await update.message.reply_text("👋 Welcome! Please choose an option:", reply_markup=reply_markup)
 
+async def help_command(update: Update, context: CallbackContext):
+    await update.message.reply_text("ℹ️ Send me a video and I’ll help compress it!")
 
-# Help Command
-async def help_command(update: Update, context):
-    await update.message.reply_text("बस मुझे कोई भी video भेजें, और मैं उसे compress करके वापस भेज दूँगा ✅")
+async def handle_video(update: Update, context: CallbackContext):
+    await update.message.reply_text("📥 Video received! Processing...")
 
-
-# Callback Handler
-async def button_handler(update: Update, context):
+async def button_handler(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
-
     if query.data == "send_video":
-        await query.edit_message_text("कृपया मुझे कोई video भेजें 🎬")
+        await query.edit_message_text("📤 Please send me a video now!")
     elif query.data == "help":
-        await query.edit_message_text("ℹ️ Help:\n\n- मुझे video भेजें\n- मैं उसे compress करूँगा\n- और compressed video आपको वापस भेजूँगा ✅")
+        await query.edit_message_text("ℹ️ Just send me any video and I’ll compress it.")
 
-
-# Video Handler
-async def handle_video(update: Update, context):
-    video = update.message.video
-    await update.message.reply_text("📥 Video प्राप्त हुआ. Processing शुरू... (Compression code यहाँ जोड़ना है)")
-
-
-# Handlers Register
+# ---------- Add handlers ----------
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("help", help_command))
-application.add_handler(CallbackQueryHandler(button_handler))
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
+application.add_handler(CallbackQueryHandler(button_handler))
 
+# ---------- Flask Route ----------
+@app.route("/webhook", methods=["POST"])
+def webhook() -> JSONDict:
+    try:
+        data = request.get_json(force=True)
+        update = Update.de_json(data, application.bot)
+        application.update_queue.put_nowait(update)
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+    return {"ok": True}
 
-# Flask route for webhook
-@app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    application.update_queue.put_nowait(update)
-    return "OK", 200
+# ---------- Set Webhook ----------
+@app.before_first_request
+def set_webhook():
+    app.logger.info("Setting webhook...")
+    application.bot.set_webhook(url=f"{WEBHOOK_URL}")
 
-
-@app.route("/")
-def index():
-    return "Bot is running!"
-
-
+# ---------- Main ----------
 if __name__ == "__main__":
-    # Set Webhook
-    import asyncio
-    async def set_webhook():
-        await application.bot.set_webhook(f"{APP_URL}/{TOKEN}")
-
-    asyncio.run(set_webhook())
-
-    # Run Flask
-    from waitress import serve
-    serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
