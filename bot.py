@@ -34,12 +34,11 @@ application.add_handler(MessageHandler(filters.VIDEO, echo_video))
 
 
 # ---- Flask webhook ----
-@flask_app.post(f"/webhook/{BOT_TOKEN}")
+@app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.get_json(force=True)
-    update = Update.de_json(data, application.bot)
-    asyncio.run(application.process_update(update))
-    return "ok"
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.update_queue.put_nowait(update)
+    return "ok", 200
 
 
 # ---- Run ----
