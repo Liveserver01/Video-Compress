@@ -17,7 +17,6 @@ from telegram import (
 )
 from telegram.constants import ChatAction
 from telegram.ext import (
-    Application,
     ApplicationBuilder,
     CommandHandler,
     MessageHandler,
@@ -48,6 +47,7 @@ MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "1"))
 job_semaphore = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
 
 
+# ================== Encode Settings ==================
 @dataclass
 class EncodeSettings:
     codec: str = "libx265"
@@ -66,7 +66,8 @@ class EncodeSettings:
 USER_SETTINGS: Dict[int, EncodeSettings] = {}
 PENDING_FILE: Dict[int, Tuple[str, str]] = {}
 
-# ======================== UI ==========================
+
+# ================== Keyboards ==================
 def settings_keyboard(s: EncodeSettings) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(text=f"Codec: {'H.265' if s.codec=='libx265' else 'H.264'}", callback_data="toggle_codec")],
@@ -87,7 +88,7 @@ def confirm_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
-# ==================== Helpers =========================
+# ================== Helpers ==================
 async def run_cmd(cmd: list) -> Tuple[int, str, str]:
     proc = await asyncio.create_subprocess_exec(
         *cmd,
@@ -111,9 +112,7 @@ def build_scale_filter(target: str, width: Optional[int], height: Optional[int])
         return None
     mapping = {"480p": 480, "720p": 720, "1080p": 1080}
     th = mapping.get(target)
-    if not th:
-        return None
-    return f"scale=-2:{th}"
+    return f"scale=-2:{th}" if th else None
 
 
 async def build_ffmpeg_cmd(input_path: str, output_path: str, s: EncodeSettings) -> list:
@@ -142,7 +141,7 @@ async def build_ffmpeg_cmd(input_path: str, output_path: str, s: EncodeSettings)
     return cmd
 
 
-# ==================== Bot Handlers ====================
+# ================== Bot Handlers ==================
 def get_user_settings(chat_id: int) -> EncodeSettings:
     if chat_id not in USER_SETTINGS:
         USER_SETTINGS[chat_id] = EncodeSettings()
@@ -252,7 +251,7 @@ async def handle_compress(chat_id: int, file_id: str, orig_name: str, context: C
             )
 
 
-# =================== Flask + Webhook ===================
+# ================== Flask + Webhook ==================
 flask_app = Flask(__name__)
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 
@@ -271,20 +270,13 @@ def webhook():
     return "ok"
 
 
-async def run() -> None:
-    # webhook reset
-    await application.bot.delete_webhook(drop_pending_updates=True)
-    await application.bot.set_webhook(url=f"{RENDER_EXTERNAL_URL}/{BOT_TOKEN}")
-
-
 if __name__ == "__main__":
-    import threading
-
     async def init_bot():
         await application.bot.delete_webhook(drop_pending_updates=True)
         await application.bot.set_webhook(url=f"{RENDER_EXTERNAL_URL}/{BOT_TOKEN}")
 
     asyncio.run(init_bot())
 
-    # Flask ko alag se chalao
-    flask_app.run(host="0.0.0.0", port=PORT)
+    # Run with waitress instead of flask.run
+    from waitress import serve
+    serve(flask_app, host="0.0.0.0", port=PORT)
