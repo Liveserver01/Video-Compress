@@ -8,4 +8,4 @@ services:
       - key: BOT_TOKEN
         sync: false
       - key: RENDER_EXTERNAL_URL
-        value: https://telegram-video-bot.onrender.com
+        value: https://video-compress-jobi.onrender.com
