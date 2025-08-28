@@ -1,69 +1,78 @@
 import os
-import asyncio
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application,
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    filters
-)
-from waitress import serve
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 
-# ================= CONFIG =================
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
-RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "https://video-compress.onrender.com")
-PORT = int(os.getenv("PORT", 5000))
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+APP_URL = os.getenv("RENDER_EXTERNAL_URL")  # e.g. https://video-compress-jobi.onrender.com
 
-# ================= FLASK APP ==============
-flask_app = Flask(__name__)
-application = ApplicationBuilder().token(BOT_TOKEN).build()
+# Flask App
+app = Flask(__name__)
 
-# ================= HANDLERS ===============
+# Telegram Application
+application = Application.builder().token(TOKEN).build()
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+# Start Command
+async def start(update: Update, context):
     keyboard = [
-        [InlineKeyboardButton("⚙ Settings", callback_data="open_settings")],
-        [InlineKeyboardButton("🎥 Send a Video", callback_data="send_video")]
+        [InlineKeyboardButton("📤 Video भेजें", callback_data="send_video")],
+        [InlineKeyboardButton("ℹ️ Help", callback_data="help")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("👋 Welcome! Send me a video to compress.", reply_markup=reply_markup)
+    await update.message.reply_text("👋 नमस्ते! Video Compression Bot में आपका स्वागत है.\n\n👉 कोई भी video भेजें.", reply_markup=reply_markup)
 
-async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("⚙ Settings are under construction.")
 
-async def on_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer("⚙ Settings clicked!")
+# Help Command
+async def help_command(update: Update, context):
+    await update.message.reply_text("बस मुझे कोई भी video भेजें, और मैं उसे compress करके वापस भेज दूँगा ✅")
 
-async def on_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer("✅ Confirm clicked!")
 
-async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📥 Got your video! Processing...")
+# Callback Handler
+async def button_handler(update: Update, context):
+    query = update.callback_query
+    await query.answer()
 
-# ================= REGISTER HANDLERS ======
+    if query.data == "send_video":
+        await query.edit_message_text("कृपया मुझे कोई video भेजें 🎬")
+    elif query.data == "help":
+        await query.edit_message_text("ℹ️ Help:\n\n- मुझे video भेजें\n- मैं उसे compress करूँगा\n- और compressed video आपको वापस भेजूँगा ✅")
+
+
+# Video Handler
+async def handle_video(update: Update, context):
+    video = update.message.video
+    await update.message.reply_text("📥 Video प्राप्त हुआ. Processing शुरू... (Compression code यहाँ जोड़ना है)")
+
+
+# Handlers Register
 application.add_handler(CommandHandler("start", start))
-application.add_handler(CommandHandler("settings", settings_cmd))
-application.add_handler(CallbackQueryHandler(on_settings_callback, pattern="^(toggle_|cycle_|reset_|close_|open_settings)$"))
-application.add_handler(CallbackQueryHandler(on_confirm_callback, pattern="^(do_compress|cancel_job|send_video)$"))
-application.add_handler(MessageHandler(filters.VIDEO | filters.Document.MimeType("video/"), on_video))
+application.add_handler(CommandHandler("help", help_command))
+application.add_handler(CallbackQueryHandler(button_handler))
+application.add_handler(MessageHandler(filters.VIDEO, handle_video))
 
-# ================= WEBHOOK ================
-@flask_app.post(f"/{BOT_TOKEN}")
+
+# Flask route for webhook
+@app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    data = request.get_json(force=True)
-    update = Update.de_json(data, application.bot)
-    asyncio.run(application.process_update(update))
-    return "ok"
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.update_queue.put_nowait(update)
+    return "OK", 200
 
-async def init_bot():
-    await application.bot.delete_webhook(drop_pending_updates=True)
-    await application.bot.set_webhook(url=f"{RENDER_EXTERNAL_URL}/{BOT_TOKEN}")
 
-# ================= MAIN ===================
+@app.route("/")
+def index():
+    return "Bot is running!"
+
+
 if __name__ == "__main__":
-    asyncio.run(init_bot())
-    serve(flask_app, host="0.0.0.0", port=PORT)
+    # Set Webhook
+    import asyncio
+    async def set_webhook():
+        await application.bot.set_webhook(f"{APP_URL}/{TOKEN}")
+
+    asyncio.run(set_webhook())
+
+    # Run Flask
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
