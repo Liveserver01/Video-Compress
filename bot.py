@@ -185,18 +185,22 @@ def run_ffmpeg(cmd):
 
 async def main():
     app = Application.builder().token(BOT_TOKEN).build()
+
+    # 🔧 important: disable webhook so polling works
+    await app.bot.delete_webhook(drop_pending_updates=True)
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("settings", show_settings))
     app.add_handler(CallbackQueryHandler(on_button))
-
     app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, handle_media))
 
     await app.initialize()
     await app.start()
-    logger.info("Bot started (polling)")
+    logging.info("Bot started (polling)")
     await app.updater.start_polling()
     await app.updater.idle()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
