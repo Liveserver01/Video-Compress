@@ -106,17 +106,11 @@ Command	Description
 
 📁 project-root
 ├── app.py # Flask Admin Panel & API
-
 ├── bot.py # Telegram Bot main script
-
 ├── updater.py # GitHub sync functions
-
 ├── settings.json # Bot settings
-
 ├── movie_list.json # Saved movie data
-
 ├── bot.log # Action logs
-
 └── requirements.txt # Dependencies
 
 
