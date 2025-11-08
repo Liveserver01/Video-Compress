@@ -44,7 +44,7 @@ Example usage:
 
 <img src="assets/start.png" width="420px">
 <img src="assets/settings_menu.png" width="420px">
-<img src="assets/compression_logs.png" width="420px">
+<img src="assets/compression_log.png" width="420px">
 <img src="assets/compression_result.png" width="420px">
 <img src="assets/render_logs.png" width="420px">
 
