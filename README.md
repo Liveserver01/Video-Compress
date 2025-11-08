@@ -1,55 +1,30 @@
-1) BOT का काम:
+# Telegram Video Compressor Bot (FFmpeg + Flask + Render)
 
-- यूज़र से वीडियो लेता है और FFmpeg से compress/transcode करता है.
+A production-ready Telegram bot that compresses videos using FFmpeg. Defaults to **H.265/HEVC (libx265)** with these presets:
 
-- Codec: H.265 (libx265) डिफ़ॉल्ट, बाद में H.264 (libx264) भी चुन सकते हैं.
+- Resolution choices: **480p, 720p, 1080p**
+- Framerate: **same as source**
+- Encode preset: **medium** (and optional **low** → uses `slow` internally)
+- Encode profile: **main10**
+- Encode level: **4.0**
+- CRF: **24**
+- Audio: **same as source** or **skip**
+- Subtitles: **same as source** or **skip**
 
-- Resolution विकल्प: 480p / 720p / 1080p (या Source जैसा ही)
+Bot also supports **H.264/AVC (libx264)** if you switch codec from settings.
 
-- Framerate: Source जैसा ही (हम ffmpeg में -r सेट नहीं कर रहे ताकि source जैसा रहे).
+It runs a **Flask** health server alongside the bot so the service stays live on Render.
 
-- Preset: medium या low (low = slow preset के बराबर, ज्यादा quality/कम speed)
+## Project Structure
 
-- Profile (HEVC): main10, Level: 4.0, CRF: 24
-
-- Audio: same as source (copy) या skip (-an)
-
-- Subtitles: same as source (copy) या skip
-
-- Output container: .mkv (subtitles compatibility के लिए बेहतर)
-
-
-
-2) Deployment (Render / Docker):
-
-- नीचे requirements.txt, Dockerfile और .env.example दिया हुआ है.
-
-- Render पर “Web Service” के रूप में चलाइए और ‘Start Command’ में: python main.py
-
-- TELEGRAM_BOT_TOKEN env var ज़रूर सेट करें.
-
-- FFmpeg Dockerfile से install हो जाएगा.
-
-
-
-3) लोकल रन:
-
-- Python 3.10+
-
-- pip install -r requirements.txt
-
-- FFmpeg system PATH में होना चाहिए (लोकल में खुद install करें).
-
-- .env में TELEGRAM_BOT_TOKEN सेट करें, फिर: python main.py
-
-
-
-4) नोट्स:
-
-- Telegram 2GB+ फाइलों के लिए सावधानी रखें; बड़ी फाइलों में प्रोसेसिंग और अपलोड समय ज्यादा होगा.
-
-- Subtitles copy करने पर कंटेनर .mkv उचित है. Telegram में ये ‘document’ की तरह भेजा जाएगा.
-
-- अगर H.264 चाहिए तो /settings से codec बदल सकते हैं.
-
-
+.
+├── bot.py # Telegram bot (python-telegram-bot v20, asyncio)
+├── ffmpeg_utils.py # FFmpeg command builder and helpers
+├── settings_store.py # Per-user settings (JSON file)
+├── app.py # Flask keepalive app (/health)
+├── run.py # Starts Flask + bot polling together
+├── requirements.txt # Python deps
+├── Dockerfile # Ensures FFmpeg exists on Render
+├── render.yaml # Render deployment config
+├── Procfile # For local Procfile runners (optional)
+└── README.md # How to run/deploy
