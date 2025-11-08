@@ -1,168 +1,118 @@
-# 🎥 Telegram Video Compressor Bot (FFmpeg + Flask + Render)
+# 🎥 Telegram Video Compressor Bot  
+**Powered by FFmpeg (H.265 / H.264) + Flask + Render**
 
-A powerful Telegram bot that compresses videos using **FFmpeg (H.265 / H.264)** with multiple options such as:
-- Resolution change (480p / 720p / 1080p)
-- H.265 (HEVC) / H.264 (AVC) codec toggle
-- CRF selection for quality control
-- Audio keep / skip
-- Subtitles keep / skip (auto switches to MKV if subs are kept)
-- Runs 24×7 using Flask on Render.com
-
-> ✅ Output video size reduces up to **70–90%** while maintaining quality.
+This Telegram bot compresses videos using **FFmpeg (libx265 / libx264)** and returns a smaller output while maintaining visual quality.  
+Resolution, codec, CRF, audio, and subtitle settings are customizable directly inside Telegram through `/settings`.
 
 ---
 
-## 🚀 Live Demo / Bot Link
-
-👉 (Add your bot link here when publicly available)
-
----
-
-## 🔧 Features
+## ✨ Key Features
 
 | Feature | Description |
 |--------|-------------|
-| 🎯 Compression | H.265 / H.264 FFmpeg compression |
-| 📉 Resolution Change | Choose 480p / 720p / 1080p |
-| 🔁 Codec Switch | Switch codec LIVE from `/settings` |
-| 🔊 Audio Options | Keep audio / Remove audio |
-| 💬 Subtitles | Keep subtitles / remove (auto MKV output when keeping subs) |
-| ⚙️ CRF Control | Lower CRF = better quality, higher CRF = more compression |
-| 🌍 Always Live | Runs continuously using Flask on Render |
+| H.265 / H.264 compression | Toggle codec directly through `/settings` |
+| Resolution change | 480p / 720p / 1080p |
+| CRF value control | Adjust compression / quality |
+| Audio support | Keep or remove audio |
+| Subtitle support | Keep subtitles (auto MKV output when copying subs) |
+| Always online | Flask server keeps Render container alive |
+| No VPS required | Fully cloud based (Render deployment) |
+
+> Output size can reduce **70–90%** depending on source video.
 
 ---
 
-## 📁 Project Structure
-.
-├── bot.py # Telegram bot logic
-├── ffmpeg_utils.py # FFmpeg command builder
-├── settings_store.py # Stores per-user compression preferences
-├── app.py # Flask keep-alive server for Render
-├── run.py # Runs both bot + Flask simultaneously
-├── Dockerfile # Ensures FFmpeg is installed on Render
-├── requirements.txt # Required Python packages
-└── render.yaml # Render deployment config
-
-
----
-
-## 🛠️ How to Use Bot (User Guide)
+## 🧠 How to Use
 
 | Step | Action |
 |------|--------|
-| ✅ Step 1 | Send `/start` in bot chat |
-| ⚙️ Step 2 | Type `/settings` to customize options |
-| 🎥 Step 3 | Send **video as Document** (not as video) |
-| ⏳ Step 4 | Bot compresses using FFmpeg |
-| 📥 Step 5 | Bot returns compressed output video |
+| 1️⃣ | Send `/start` to bot |
+| 2️⃣ | Use `/settings` to adjust compression options |
+| 3️⃣ | **Send video as Document** (important) |
+| 4️⃣ | Bot compresses the video |
+| 5️⃣ | Bot sends compressed output back |
 
 ---
 
-## 🧠 Bot Commands
+## 📸 Screenshots
 
-| Command | Description |
-|---------|-------------|
-| `/start` | Starts the bot |
-| `/settings` | Show compression options |
-| `/help` | Usage guide |
+Put your images inside:
+
+assets/
+├── settings_menu.png
+├── compression_result.png
+└── render_logs.png
+
+yaml
+Copy code
+
+Example usage:
+
+<img src="assets/settings_menu.png" width="420px">
+<img src="assets/compression_result.png" width="420px">
+<img src="assets/render_logs.png" width="420px">
 
 ---
 
-## 🖥️ Deploy on Render (No VPS Required)
+## 🗂 Project Structure
 
-### 1️⃣ Fork/Clone Repo
+.
+├── bot.py # Telegram bot logic
+├── ffmpeg_utils.py # FFmpeg command builder
+├── settings_store.py # Saves user preferences (JSON)
+├── app.py # Flask keep-alive server for Render
+├── run.py # Runs both bot + Flask
+├── Dockerfile # FFmpeg + Python environment setup
+├── requirements.txt # Dependency list
+└── render.yaml # Render deployment config
 
-👉 GitHub Repo:  
-🔗 **https://github.com/Liveserver01/Video-Compress**
+yaml
+Copy code
+
+---
+
+## 🔧 Deployment (Render.com)
+
+### 1️⃣ Clone / Fork Repository
 
 ```bash
 git clone https://github.com/Liveserver01/Video-Compress
 cd Video-Compress
-
-2️⃣ Create bot on Telegram (BotFather)
-
+2️⃣ Create bot via BotFather
+bash
+Copy code
 /newbot
-Get BOT_TOKEN
+Copy the generated BOT_TOKEN.
 
-3️⃣ Deploy to Render
+3️⃣ Deploy on Render
+Go to https://render.com
 
-Login → https://render.com
+New → Web Service
 
-Create New → Web Service
+Select this GitHub repository
 
-Select GitHub repo
-
-Render automatically detects Dockerfile
+Render auto-detects Dockerfile
 
 Add environment variable:
 
-| Key         | Value          |
-| ----------- | -------------- |
-| `BOT_TOKEN` | Your bot token |
+Key	Value
+BOT_TOKEN	Your BotFather bot token
 
-✅ Deploy — bot runs automatically.
+✅ Deploy — bot starts automatically.
 
-📍 Important Notes
-
-Always send video as Document, otherwise Telegram compresses it on its own.
-
-For max quality, use:
-
-Codec: H.265
-
-Resolution: 720p
-
-CRF: 24
-
-Preset: medium
-
+🧪 Bot Commands
+Command	Description
+/start	Initialize bot
+/settings	Configure compression options
+/help	Display usage guide
 
 🔗 Social Links
-<table> <tr> <td><a href="https://t.me/TechnicalHackGuide">
-<img src="https://img.shields.io/badge/Telegram-Join%20Channel-blue?logo=telegram&style=for-the-badge"/>
-</a></td> <td><a href="https://instagram.com/virendra_chauhan_1">
-<img src="https://img.shields.io/badge/Instagram-Follow%20Now-orange?logo=instagram&style=for-the-badge"/>
-</a></td> <td><a href="https://youtube.com/@Technical-hack-guide">
-<img src="https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube&style=for-the-badge"/>
-</a></td> </tr> </table>
-
-🧑‍💻 Author
-
-Virendra Chauhan
-
-Telegram: https://t.me/TechnicalHackGuide
-
-Instagram: https://instagram.com/virendra_chauhan_1
-
-YouTube: https://youtube.com/@Technical-hack-guide
+<table> <tr> <td><a href="https://t.me/TechnicalHackGuide"><img src="https://img.shields.io/badge/Telegram-Join_Channel-blue?logo=telegram&style=for-the-badge"></a></td> <td><a href="https://instagram.com/virendra_chauhan_1"><img src="https://img.shields.io/badge/Instagram-Follow-purple?logo=instagram&style=for-the-badge"></a></td> <td><a href="https://youtube.com/@Technical-hack-guide"><img src="https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube&style=for-the-badge"></a></td> </tr> </table>
+GitHub Repository → https://github.com/Liveserver01/Video-Compress
 
 ⭐ Support
+If this bot helped you, consider giving the repo a ⭐
 
-If this helps you, star the repo — it motivates further development.
-
-👉 https://github.com/Liveserver01/Video-Compress
-
-
-# 🎥 Telegram Video Compressor Bot (FFmpeg + Flask + Render)
-
-A powerful Telegram bot that compresses videos using **FFmpeg (H.265 / H.264)** with multiple options such as:
-- Resolution change (480p / 720p / 1080p)
-- CRF quality control
-- Audio keep / remove
-- Subtitles keep / remove (auto MKV)
-- Always live 24×7 (powered by Flask on Render)
-
-> ✅ Reduces size up to **70–90%** while maintaining quality.
-
----
-
-## 🚀 Demo Bot Link
-> (Add your bot link here once you make it public)
-
----
-
-## 🖼️ Screenshots / Preview
-
-> Upload screenshots to your repo in a new folder `/assets/`  
-> Then update the image links below.
-
+mathematica
+Copy code
+https://github.com/Liveserver01/Video-Compress
