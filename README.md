@@ -67,7 +67,6 @@ Example usage:
 
 ### 1️⃣ Clone Repo
 
-```bash
 git clone https://github.com/Liveserver01/Video-Compress
 cd Video-Compress
 2️⃣ Create bot via BotFather
