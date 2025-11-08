@@ -100,14 +100,14 @@ BOT_TOKEN	Your BotFather token
 
 | File Name         | Description |
 |-----------------------|-------------|
-| `bot.py`           | # Telegram bot logic |
-| `ffmpeg_utils.py`      | # FFmpeg command builder |
-| `settings_store.py`          | # Saves user preferences (JSON) |
-| `app.py`          | # Flask keep-alive server |
-| `run.py`          | # Runs bot + Flask |
-| `Dockerfile`		| # FFmpeg + Python environment |
-| `requirements.txt` | # Dependencies |
-| `render.yaml`      | # Render deployment config |
+| ├── `bot.py`           | # Telegram bot logic |
+| ├── `ffmpeg_utils.py`  | # FFmpeg command builder |
+| ├── `settings_store.py`| # Saves user preferences (JSON) |
+| ├── `app.py`           | # Flask keep-alive server |
+| ├──`run.py`            | # Runs bot + Flask |
+| ├──`Dockerfile`		 | # FFmpeg + Python environment |
+| ├──`requirements.txt`  | # Dependencies |
+| └──`render.yaml`       | # Render deployment config |
  
 
 🔗 Social Links
