@@ -140,6 +140,12 @@ Command	Description
 </a>
 </p>
 
+⭐ Support
+
+If this bot was useful, consider giving the repo a star ⭐
+
+👉 https://github.com/Liveserver01/Video-Compress
+
 
 ## 📜 License  
 
