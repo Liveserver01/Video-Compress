@@ -104,15 +104,14 @@ Command	Description
 
 ## 📂 File Structure  
 
-``📁 project-root
-├── app.py # Flask Admin Panel & API
-├── bot.py # Telegram Bot main script
-├── updater.py # GitHub sync functions
-├── settings.json # Bot settings
-├── movie_list.json # Saved movie data
-├── bot.log # Action logs
+📁 project-root
+├── app.py # Flask Admin Panel & API,
+├── bot.py # Telegram Bot main script,
+├── updater.py # GitHub sync functions,
+├── settings.json # Bot settings,
+├── movie_list.json # Saved movie data,
+├── bot.log # Action logs,
 └── requirements.txt # Dependencies
-``
 
 <a href="https://github.com/Liveserver01/Telegram_chat_bot" target="_blank">
   <img src="https://img.shields.io/badge/Bot%20Creator-VIRENDRA%20CHAUHAN-4CAF50?style=for-the-badge" alt="Bot: created by VIRENDRA CHAUHAN"/>
