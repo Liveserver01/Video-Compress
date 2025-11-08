@@ -65,32 +65,26 @@ Example usage:
 
 ## 🛠️ Deployment (Render)
 
-### 1️⃣ Clone Repo
+1️⃣ Clone Repo
 
 git clone https://github.com/Liveserver01/Video-Compress
 cd Video-Compress
+
 2️⃣ Create bot via BotFather
 /newbot
-
-
 Copy your BOT_TOKEN.
 
 3️⃣ Deploy to Render
 
 Go to https://render.com
-
 Click New → Web Service
-
 Select your GitHub repo
-
 Render auto-detects Dockerfile
-
 Add Environment Variable:
-
 Key	Value
 BOT_TOKEN	Your BotFather token
-
 ✅ Deploy — bot starts automatically.
+
 
 🧪 Commands
 Command	Description
