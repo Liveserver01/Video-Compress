@@ -74,11 +74,12 @@ Key	Value
 BOT_TOKEN	Your BotFather token
 ✅ Deploy — bot starts automatically.
 
-| ⚙ Environment  Variables |
+## ⚙ Environment Variables  
 
-| Variable Name	 |  Description |
+| Variable Name         | Description |
+|-----------------------|-------------|
+| `BOT_TOKEN`           | Your Telegram Bot API Token |
 
-| BOT_TOKEN	Your |  Telegram Bot API Token |
 
 
 🧪 Commands
