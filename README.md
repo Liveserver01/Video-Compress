@@ -116,8 +116,15 @@ CRF: 24
 
 Preset: medium
 
+
 🔗 Social Links
-<table> <tr> <td><a href="https://t.me/TechnicalHackGuide"><img src="https://img.shields.io/badge/Telegram-Join%20Channel-blue?logo=telegram&style=for-the-badge"/></a></td> <td><a href="https://instagram.com/virendra_chauhan_1"><img src="https://img.shields.io/badge/Instagram-Follow%20Now-orange?logo=instagram&style=for-the-badge"/></a></td> <td><a href="https://youtube.com/@Technical-hack-guide"><img src="https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube&style=for-the-badge"/></a></td> </tr> </table>
+<table> <tr> <td><a href="https://t.me/TechnicalHackGuide">
+<img src="https://img.shields.io/badge/Telegram-Join%20Channel-blue?logo=telegram&style=for-the-badge"/>
+</a></td> <td><a href="https://instagram.com/virendra_chauhan_1">
+<img src="https://img.shields.io/badge/Instagram-Follow%20Now-orange?logo=instagram&style=for-the-badge"/>
+</a></td> <td><a href="https://youtube.com/@Technical-hack-guide">
+<img src="https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube&style=for-the-badge"/>
+</a></td> </tr> </table>
 
 🧑‍💻 Author
 
