@@ -104,12 +104,19 @@ Command	Description
 ## 📂 File Structure  
 .
 ├── bot.py # Telegram bot logic
+|
 ├── ffmpeg_utils.py # FFmpeg command builder
+|
 ├── settings_store.py # Saves user preferences (JSON)
+|
 ├── app.py # Flask keep-alive server
+|
 ├── run.py # Runs bot + Flask
+|
 ├── Dockerfile # FFmpeg + Python environment
+|
 ├── requirements.txt # Dependencies
+|
 └── render.yaml # Render deployment config
 
 <a href="https://github.com/Liveserver01/Telegram_chat_bot" target="_blank">
