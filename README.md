@@ -52,6 +52,7 @@ Example usage:
 
 ## 🗂 Project Structure
 .
+
 ├── bot.py # Telegram bot logic
 ├── ffmpeg_utils.py # FFmpeg command builder
 ├── settings_store.py # Saves user preferences (JSON)
