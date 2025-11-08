@@ -109,10 +109,10 @@ Command	Description
   <img src="https://img.shields.io/badge/Bot%20Creator-VIRENDRA%20CHAUHAN-4CAF50?style=for-the-badge" alt="Bot: created by VIRENDRA CHAUHAN"/>
 </a>
 
-🔗 Social Links
 <a href="https://github.com/Liveserver01/Telegram_chat_bot" target="_blank">
   <img src="https://img.shields.io/badge/Bot%20Creator-VIRENDRA%20CHAUHAN-4CAF50?style=for-the-badge" alt="Bot: created by VIRENDRA CHAUHAN"/>
 </a>
+🔗 Social Links
 <p align="left">
   <a href="https://facebook.com/virendrachauhan012" target="_blank">
     <img src="https://img.shields.io/badge/Facebook-1877F2?style=for-the-badge&logo=facebook&logoColor=white" />
