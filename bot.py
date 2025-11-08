@@ -183,23 +183,28 @@ def run_ffmpeg(cmd):
     return subprocess.call(cmd)
 
 
-async def main():
-    app = Application.builder().token(BOT_TOKEN).build()
+def main():
+    application = Application.builder().token(BOT_TOKEN).build()
 
-    # 🔧 important: disable webhook so polling works
-    await app.bot.delete_webhook(drop_pending_updates=True)
+    # Important — ensure webhook removed
+    asyncio.get_event_loop().run_until_complete(
+        application.bot.delete_webhook(drop_pending_updates=True)
+    )
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_cmd))
-    app.add_handler(CommandHandler("settings", show_settings))
-    app.add_handler(CallbackQueryHandler(on_button))
-    app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, handle_media))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_cmd))
+    application.add_handler(CommandHandler("settings", show_settings))
+    application.add_handler(CallbackQueryHandler(on_button))
+    application.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, handle_media))
 
-    await app.initialize()
-    await app.start()
-    logging.info("Bot started (polling)")
-    await app.updater.start_polling()
-    await app.updater.idle()
+    # debug: to check updates are coming
+    async def echo(update, context):
+        await update.message.reply_text("update received ✅")
+
+    application.add_handler(MessageHandler(filters.ALL, echo))
+
+    print("Bot polling started ✅")
+    application.run_polling()
 
 
 if __name__ == "__main__":
