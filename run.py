@@ -1,16 +1,14 @@
-import asyncio
 import threading
-import os
 from app import app as flask_app
-from bot import main as bot_main
+from bot import main
 
-# Run Flask server in a thread
 def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    flask_app.run(host="0.0.0.0", port=port)
+    flask_app.run(host="0.0.0.0", port=10000)
 
 if __name__ == "__main__":
-    t = threading.Thread(target=run_flask, daemon=True)
-    t.start()
-    asyncio.run(bot_main())
+    thread = threading.Thread(target=run_flask)
+    thread.daemon = True
+    thread.start()
 
+    # now blocking call
+    main()
