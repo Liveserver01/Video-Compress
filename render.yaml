@@ -1,12 +1,9 @@
 services:
   - type: web
-    name: video-compress
-    env: python
+    name: telegram-video-compressor
+    env: docker
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: python bot.py
+    autoDeploy: true
     envVars:
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: RENDER_EXTERNAL_URL
-        value: https://video-compress-jobi.onrender.com
+      - key: BOT_TOKEN
+        sync: false  # set in Render dashboard
